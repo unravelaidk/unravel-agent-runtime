@@ -24,8 +24,8 @@ for an agent and tool example.
 
 ## Release
 
-The [release workflow](.github/workflows/release.yml) publishes both Rust
-crates to crates.io, publishes the Node package to npm, and creates a GitHub
+The [release workflow](.github/workflows/release.yml) publishes the Node
+package to npm, both Rust crates to crates.io, and creates a GitHub
 release for a `v<version>` tag. Configure `CARGO_REGISTRY_TOKEN` as a repository
 Actions secret. On npm, configure trusted publishing for
 `@unravelai/unravel-agent-runtime` from the GitHub repository
@@ -33,10 +33,9 @@ Actions secret. On npm, configure trusted publishing for
 Enable direct `npm publish` as an allowed action for the trusted publisher.
 The release job requests an OIDC identity token and uses Node.js 24 with npm
 CLI 11 to publish with provenance. npm trusted publishing must be configured
-before pushing a release tag. For a new npm package, publish an initial
-version under your npm account first so you can open its package settings and
-configure the trusted publisher. Reserve version `0.1.0` for the combined
-release; use `0.0.0` for the bootstrap package.
+before pushing a release tag. For a new npm package, create the package
+under your npm organization and configure the trusted publisher before the
+first release.
 
 To release a new version, update the workspace `version` in `Cargo.toml`, the
 runtime dependency version in `crates/unravel-agent-providers/Cargo.toml`, and
