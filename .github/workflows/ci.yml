@@ -27,3 +27,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.88.0
       - run: cargo check --workspace --all-targets --locked
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: packages/unravel-agent-runtime/package-lock.json
+      - run: cargo build -p unravel-agent-node --locked
+      - run: mkdir -p packages/unravel-agent-runtime/bin/linux-x64 && cp target/debug/unravel-agent-node packages/unravel-agent-runtime/bin/linux-x64/
+      - run: npm ci && npm run build && npm test
+        working-directory: packages/unravel-agent-runtime

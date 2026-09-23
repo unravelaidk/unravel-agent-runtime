@@ -1,0 +1,20 @@
+Unravel Agent Runtime
+
+This repository extracts shared agent-runtime and model-provider implementations
+from the following GNU Affero General Public License v3 projects:
+
+ServoLoop
+  https://github.com/unravelaidk/servoloop
+  Source revision: a2e8d667e0027d45fa9ce8573169b9971dcde021
+  Extracted modules: crates/servoloop-core and crates/servoloop-providers.
+
+Khadim
+  https://github.com/unravelaidk/khadim
+  Source revision: e1768753c5c004668f7363f3d5e140e739813011
+  Shared provider compatibility requirements and model/tool execution behavior
+  originate in crates/khadim-ai-core and crates/khadim-coding-agent.
+
+The provider crate's NOTICE retains the earlier attribution of ServoLoop's
+adaptations from Khadim. Existing copyright and license notices are retained.
+This extraction and its modifications are distributed under AGPL-3.0-only;
+see LICENSE.

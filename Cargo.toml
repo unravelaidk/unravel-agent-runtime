@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/unravel-agent-runtime", "crates/unravel-agent-providers"]
+members = ["crates/unravel-agent-runtime", "crates/unravel-agent-providers", "crates/unravel-agent-node"]
 resolver = "2"
 
 [workspace.package]

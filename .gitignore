@@ -1,2 +1,6 @@
 /target/
 /target-msrv/
+/node_modules/
+/packages/unravel-agent-runtime/node_modules/
+/packages/unravel-agent-runtime/dist/
+/packages/unravel-agent-runtime/bin/
