@@ -1,5 +1,5 @@
 {
-  "name": "unravel-agent-runtime",
+  "name": "@unravelai/unravel-agent-runtime",
   "version": "0.1.0",
   "description": "Node and TypeScript bridge to the Unravel Rust agent runtime",
   "license": "AGPL-3.0-only",

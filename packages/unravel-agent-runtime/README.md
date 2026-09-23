@@ -1,4 +1,4 @@
-# unravel-agent-runtime for Node.js
+# @unravelai/unravel-agent-runtime for Node.js
 
 Run the Rust agent loop from Node.js with TypeScript types and JavaScript tool
 callbacks. Each `run` launches a local Rust bridge process. The package
@@ -12,11 +12,11 @@ You can supply `apiKey` directly or set the provider's API key environment
 variable, such as `OPENAI_API_KEY`.
 
 ```sh
-npm install unravel-agent-runtime
+npm install @unravelai/unravel-agent-runtime
 ```
 
 ```ts
-import { createSession, run } from 'unravel-agent-runtime';
+import { createSession, run } from '@unravelai/unravel-agent-runtime';
 
 const result = await run({
   provider: { kind: 'openai', model: 'gpt-4o-mini' },

@@ -14,7 +14,7 @@ cargo add unravel-agent-runtime unravel-agent-providers
 For Node.js 20 or later, install the TypeScript-compatible package:
 
 ```sh
-npm install unravel-agent-runtime
+npm install @unravelai/unravel-agent-runtime
 ```
 
 The npm package includes compiled Rust executables for Linux (x64 and arm64),
@@ -28,7 +28,7 @@ The [release workflow](.github/workflows/release.yml) publishes both Rust
 crates to crates.io, publishes the Node package to npm, and creates a GitHub
 release for a `v<version>` tag. Configure `CARGO_REGISTRY_TOKEN` as a repository
 Actions secret. On npm, configure trusted publishing for
-`unravel-agent-runtime` from the GitHub repository
+`@unravelai/unravel-agent-runtime` from the GitHub repository
 `unravelaidk/unravel-agent-runtime` and the workflow file `release.yml`.
 Enable direct `npm publish` as an allowed action for the trusted publisher.
 The release job requests an OIDC identity token and uses Node.js 24 with npm
