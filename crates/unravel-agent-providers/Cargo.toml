@@ -13,7 +13,7 @@ futures-util.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-unravel-agent-runtime = { version = "0.1.0", path = "../unravel-agent-runtime" }
+unravel-agent-runtime = { version = "0.1.1", path = "../unravel-agent-runtime" }
 thiserror.workspace = true
 tokio.workspace = true
 

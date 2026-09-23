@@ -1,6 +1,6 @@
 {
   "name": "@unravelai/unravel-agent-runtime",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Node and TypeScript bridge to the Unravel Rust agent runtime",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -8,12 +8,33 @@
     "url": "git+https://github.com/unravelaidk/unravel-agent-runtime.git",
     "directory": "packages/unravel-agent-runtime"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "files": ["dist/", "bin/", "README.md", "NOTICE", "PROVIDERS-NOTICE", "LICENSE"],
-  "scripts": { "build": "tsc -p tsconfig.json", "check": "tsc -p tsconfig.json --noEmit", "test": "node --test test/*.test.mjs" },
-  "devDependencies": { "@types/node": "^20.19.0", "typescript": "^5.9.0" }
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "bin/",
+    "README.md",
+    "NOTICE",
+    "PROVIDERS-NOTICE",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "typescript": "^5.9.0"
+  }
 }

@@ -41,7 +41,7 @@ To release a new version, update the workspace `version` in `Cargo.toml`, the
 runtime dependency version in `crates/unravel-agent-providers/Cargo.toml`, and
 the npm version in `packages/unravel-agent-runtime/package.json`. Regenerate
 `Cargo.lock` and the npm lockfile, run the checks below, commit and push the
-changes, then push a matching tag such as `v0.1.0`. The workflow checks that
+changes, then push a matching tag such as `v0.1.1`. The workflow checks that
 the tag and package versions match before publishing.
 
 ```sh
@@ -54,8 +54,8 @@ npm run build
 
 The provider crate depends on the runtime crate, so the workflow publishes
 the runtime first and retries the provider publish while crates.io updates its
-index. A rerun after a partial publication needs manual handling of already
-published versions; registry versions cannot be overwritten.
+index. The npm and crates.io jobs run independently. They skip versions that
+are already public when a failed workflow is rerun.
 
 ## License
 
