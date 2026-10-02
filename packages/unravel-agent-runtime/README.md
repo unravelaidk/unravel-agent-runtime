@@ -12,7 +12,7 @@ You can supply `apiKey` directly or set the provider's API key environment
 variable, such as `OPENAI_API_KEY`.
 
 ```sh
-npm install @unravelai/unravel-agent-runtime
+npm install @unravelai/unravel-agent-runtime@0.2.0
 ```
 
 ```ts
@@ -45,6 +45,10 @@ callbacks may be synchronous or asynchronous and return text or an object
 with `content` and optional `metadata`. Tools execute sequentially by
 default. Set `preferStreaming: true` to receive model deltas through
 `onEvent`; the runtime only dispatches complete tool calls.
+
+Version 0.2.0 keeps the Node callback contract text/metadata-only. Ephemeral
+tool observations are available through the Rust API; returning an image from
+a JavaScript tool does not implicitly forward it to the model.
 
 For a local OpenAI-compatible endpoint, use `kind: 'custom'` with a `baseUrl`
 that includes `/v1`. The `ollama`, `nvidia`, and `openrouter` kinds use the

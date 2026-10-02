@@ -8,13 +8,13 @@ providers, and a Node.js bridge that runs the Rust loop with JavaScript tools.
 For Rust, add the runtime and provider crates to your project:
 
 ```sh
-cargo add unravel-agent-runtime unravel-agent-providers
+cargo add unravel-agent-runtime@0.2.0 unravel-agent-providers@0.2.0
 ```
 
 For Node.js 20 or later, install the TypeScript-compatible package:
 
 ```sh
-npm install @unravelai/unravel-agent-runtime
+npm install @unravelai/unravel-agent-runtime@0.2.0
 ```
 
 The npm package includes compiled Rust executables for Linux (x64 and arm64),
@@ -22,10 +22,11 @@ macOS (x64 and arm64), and Windows (x64). It does not require Cargo on the
 machine where you install it. See the [Node package guide](packages/unravel-agent-runtime/README.md)
 for an agent and tool example.
 
-## Unreleased 0.2.0 Rust changes
+## 0.2.0
 
-These changes require a Git revision containing them; pushing this repository
-does not publish new crates, npm binaries, or a release tag.
+This release adds ephemeral Rust tool observations and strict image validation.
+It contains source-breaking Rust struct changes described below; the serialized
+session schema and Node callback wire format remain unchanged.
 
 Rust tools can return `ToolOutput::with_observation(ToolObservation::new(content,
 valid_for))` to provide untrusted sensor input for exactly the next model turn.
@@ -74,7 +75,6 @@ cargo +1.88.0 check --workspace --all-targets --locked
 cargo run --locked -p unravel-agent-runtime --example tool_roundtrip
 ```
 
-
 ## Release
 
 The [release workflow](.github/workflows/release.yml) publishes the Node
@@ -94,7 +94,7 @@ To release a new version, update the workspace `version` in `Cargo.toml`, the
 runtime dependency version in `crates/unravel-agent-providers/Cargo.toml`, and
 the npm version in `packages/unravel-agent-runtime/package.json`. Regenerate
 `Cargo.lock` and the npm lockfile, run the checks below, commit and push the
-changes, then push a matching tag such as `v0.1.1`. The workflow checks that
+changes, then push a matching tag such as `v0.2.0`. The workflow checks that
 the tag and package versions match before publishing.
 
 ```sh
