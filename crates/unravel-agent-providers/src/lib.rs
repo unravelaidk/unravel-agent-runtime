@@ -45,6 +45,7 @@ mod chat;
 mod completions;
 pub mod discovery;
 mod error;
+mod images;
 mod messages;
 mod secret;
 mod spec;
@@ -60,6 +61,7 @@ pub use discovery::{
     ModalitySupport, ToolSupport,
 };
 pub use error::{ProviderError, ProviderResult};
+pub use images::validate_image_messages;
 pub use secret::Secret;
 pub use spec::{
     KeyPolicy, Protocol, ProviderSpec, BUILTIN_NVIDIA, BUILTIN_OLLAMA, BUILTIN_OPENAI,

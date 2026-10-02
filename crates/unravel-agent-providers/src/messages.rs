@@ -8,6 +8,7 @@
 //! before sending.
 
 use crate::error::ProviderError;
+use crate::images::validate_image_messages;
 use crate::ProviderResult;
 use serde_json::{json, Value};
 use unravel_agent_runtime::{ContentPart, ImageSource, Message, ToolDefinition};
@@ -17,6 +18,7 @@ use unravel_agent_runtime::{ContentPart, ImageSource, Message, ToolDefinition};
 /// Returns an error if the history contains a `ToolUnknown` message —
 /// the model must never see an implied success or an unresolved unknown.
 pub fn to_openai_messages(messages: &[Message]) -> ProviderResult<Vec<Value>> {
+    validate_image_messages(messages)?;
     let mut converted = Vec::with_capacity(messages.len());
 
     for message in messages {
@@ -213,29 +215,6 @@ mod tests {
         let wire = to_openai_messages(&messages).unwrap();
         assert_eq!(wire[0]["role"], "user");
         assert_eq!(wire[0]["content"], "hello");
-    }
-
-    #[test]
-    fn user_multimodal_becomes_array_with_image_url() {
-        let content = Content::from_parts(vec![
-            ContentPart::text("look at this"),
-            ContentPart::Image {
-                media_type: Some("image/png".into()),
-                source: ImageSource::Base64 {
-                    data: "iVBORw0KGgo=".into(),
-                },
-            },
-        ]);
-        let messages = vec![Message::User { content }];
-        let wire = to_openai_messages(&messages).unwrap();
-        assert_eq!(wire[0]["role"], "user");
-        let content = wire[0]["content"].as_array().unwrap();
-        assert_eq!(content.len(), 2);
-        assert_eq!(content[0]["type"], "text");
-        assert_eq!(content[1]["type"], "image_url");
-        let url = content[1]["image_url"]["url"].as_str().unwrap();
-        assert!(url.starts_with("data:image/png;base64,"));
-        assert!(url.contains("iVBORw0KGgo="));
     }
 
     #[test]

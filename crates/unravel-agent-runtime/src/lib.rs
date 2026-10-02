@@ -7,7 +7,12 @@
 //!
 //! A [`Model`] returns a fully assembled [`ModelResponse`]. Streaming deltas
 //! carry observable payloads but never execute partial tool calls. A [`Tool`]
-//! returns text and structured metadata. Tools execute sequentially unless both
+//! returns text, safe metadata and optional ephemeral [`ToolObservation`] input.
+//! Observations are untrusted typed content delivered only on the next model
+//! turn; they are never persisted or emitted in events. Retries reuse the same
+//! content until expiry, checked before each dispatch. Fresh runs, reconciliation,
+//! serialization, cloning, failed or dropped turns discard pending observations.
+//! Tools execute sequentially unless both
 //! the tool and [`LoopConfig`] explicitly opt into bounded parallel execution.
 //! Completed parallel results retain transcript order even when a caller drops
 //! the pending turn future.
@@ -45,4 +50,6 @@ pub use model::{
 pub use orchestrator::{AgentLoop, LoopConfig, ResponseValidation, TurnOutcome};
 pub use session::{Content, ContentPart, ImageSource, Message, Session};
 pub use stop::StopToken;
-pub use tool::{validate_tool_calls, Tool, ToolCall, ToolDefinition, ToolOutput, ToolRegistry};
+pub use tool::{
+    validate_tool_calls, Tool, ToolCall, ToolDefinition, ToolObservation, ToolOutput, ToolRegistry,
+};

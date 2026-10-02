@@ -21,6 +21,8 @@
 //! - No asserting on implementation shape — assert on messages, events,
 //!   and side effects.
 
+mod images;
+
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -577,78 +579,6 @@ async fn session_tool_call_roundtrip_through_agent_loop() {
         )),
         1
     );
-}
-
-#[tokio::test]
-async fn session_image_payload_preserved_in_request() {
-    let server = MockServer::start(Box::new(|_method, _path, body, _headers| {
-        let payload: Value = serde_json::from_str(body).unwrap();
-        let messages = payload["messages"].as_array().unwrap();
-        // Find the user message (not the system message).
-        let user_msg = messages
-            .iter()
-            .find(|m| m["role"] == "user")
-            .expect("user message must be present");
-        let content = &user_msg["content"];
-
-        // Must be an array (multimodal), not a plain string.
-        assert!(
-            content.is_array(),
-            "image content must be an array, got: {content}"
-        );
-        let blocks = content.as_array().unwrap();
-        assert_eq!(blocks.len(), 2);
-        assert_eq!(blocks[0]["type"], "text");
-        assert_eq!(blocks[1]["type"], "image_url");
-
-        // The image URL must be a data URL with the actual base64 data.
-        let url = blocks[1]["image_url"]["url"].as_str().unwrap();
-        assert!(
-            url.starts_with("data:image/png;base64,"),
-            "must be a data URL"
-        );
-        assert!(
-            url.contains("iVBORw0KGgo="),
-            "must contain the actual base64 data"
-        );
-
-        MockResponse::json(
-            200,
-            json!({
-                "choices": [{"message": {"content": "I see an image"}, "finish_reason": "stop"}],
-            }),
-        )
-    }))
-    .await;
-
-    let provider = Arc::new(make_provider(&server, "test-model"));
-    let provider_for_request = provider.clone();
-    let _agent = make_agent_loop(provider);
-    let mut session = Session::new("s1");
-
-    // We need to push a multimodal user message before the loop adds
-    // the system prompt + user text. So we pre-build the session with
-    // the multimodal content.
-    session.messages.push(Message::System {
-        content: "test system prompt".into(),
-    });
-    session.messages.push(Message::User {
-        content: Content::from_parts(vec![
-            ContentPart::text("look at this"),
-            ContentPart::Image {
-                media_type: Some("image/png".into()),
-                source: ImageSource::Base64 {
-                    data: "iVBORw0KGgo=".into(),
-                },
-            },
-        ]),
-    });
-
-    // We can't use agent.run because it pushes a user text message.
-    // Instead, build the request directly and call complete.
-    let request = ModelRequest::new("s1", session.messages);
-    let response = provider_for_request.complete(request).await.unwrap();
-    assert_eq!(response.content, "I see an image");
 }
 
 #[tokio::test]
@@ -1854,7 +1784,7 @@ async fn models_dev_fixture_via_mock_server() {
         .unwrap();
     assert_eq!(good.tool_support, ToolSupport::Yes);
     assert!(!good.deprecated);
-    assert!(good.modalities.image_input);
+    assert_eq!(good.modalities.image_input, Some(true));
     assert_eq!(good.context_window, 128000);
     assert!((good.cost_input - 0.15).abs() < 0.001);
 
@@ -1915,7 +1845,7 @@ async fn models_dev_catalog_merge_preserves_provenance() {
                 attachment: true,
                 modalities: ModalitySupport {
                     text_input: true,
-                    image_input: true,
+                    image_input: Some(true),
                     text_output: true,
                 },
                 context_window: 128000,
@@ -1960,7 +1890,7 @@ async fn models_dev_catalog_merge_preserves_provenance() {
     let sh = merged.iter().find(|m| m.model_id == "shared").unwrap();
     assert!(sh.from_endpoint);
     assert_eq!(sh.tool_support, ToolSupport::Yes);
-    assert!(sh.modalities.image_input);
+    assert_eq!(sh.modalities.image_input, Some(true));
     assert_eq!(sh.context_window, 128000);
 
     // catalog-only: from_endpoint=false.
@@ -2025,7 +1955,7 @@ async fn chat_boundary_preserves_raw_arguments_and_large_cached_usage() {
         assert!(body.get("store").is_none());
         assert!(body.get("reasoning_effort").is_none());
         assert!(body.get("max_tokens").is_none());
-        assert_eq!(body["messages"][0]["content"][0]["image_url"]["url"], "data:image/png;base64,aW1n");
+        assert_eq!(body["messages"][0]["content"], "inspect this frame");
         assert_eq!(body["messages"][1]["reasoning_content"], "retained trace");
         MockResponse::json(200, json!({
             "choices": [{
@@ -2052,7 +1982,7 @@ async fn chat_boundary_preserves_raw_arguments_and_large_cached_usage() {
     let provider = make_provider(&server, "test-model").with_chat_options(options);
     let request = ChatRequest {
         messages: vec![
-            json!({"role": "user", "content": [{"type": "image_url", "image_url": {"url": "data:image/png;base64,aW1n"}}]}),
+            json!({"role": "user", "content": "inspect this frame"}),
             json!({"role": "assistant", "content": "", "reasoning_content": "retained trace"}),
         ],
         tools: Some(vec![]),

@@ -34,7 +34,7 @@ pub fn resolve_catalog_url(url: Option<&str>) -> String {
 /// Fetch the Models.dev catalog.
 ///
 /// Uses the default URL or an explicit override via
-/// [`MODELS_DEV_URL_ENV`](MODELS_DEV_URL_ENV) or the `url` parameter.
+/// [`MODELS_DEV_URL_ENV`] or the `url` parameter.
 /// The `url` parameter takes precedence over the env variable.
 pub async fn fetch_catalog(url: Option<&str>) -> ProviderResult<Vec<CatalogProvider>> {
     let endpoint = resolve_catalog_url(url);
@@ -173,7 +173,11 @@ fn parse_modalities(model: &RawModel) -> ModalitySupport {
         .unwrap_or_default();
 
     let supports_text_input = input.iter().any(|m| m == "text");
-    let supports_image_input = input.iter().any(|m| m == "image");
+    let supports_image_input = model
+        .modalities
+        .as_ref()
+        .and_then(|m| m.input.as_ref())
+        .map(|input| input.iter().any(|m| m == "image"));
     let supports_text_output = output.iter().any(|m| m == "text");
 
     ModalitySupport {
@@ -366,8 +370,37 @@ mod tests {
             .find(|m| m.model_id == "gpt-4o-mini")
             .unwrap();
         assert!(mini.modalities.text_input);
-        assert!(mini.modalities.image_input);
+        assert_eq!(mini.modalities.image_input, Some(true));
         assert!(mini.modalities.text_output);
+    }
+
+    #[test]
+    fn image_capability_depends_only_on_reported_input_modalities() {
+        let body = serde_json::json!({"mock": {
+            "name": "Mock",
+            "models": {
+                "vision-name": {"name": "Vision VL", "attachment": true},
+                "absent-input": {"name": "Output only", "modalities": {"output": ["image"]}},
+                "text": {"name": "Text", "attachment": true, "modalities": {"input": ["text"]}},
+                "empty": {"name": "Empty", "modalities": {"input": []}},
+                "image": {"name": "Image", "attachment": false, "modalities": {"input": ["image"]}}
+            }
+        }});
+        let catalog = parse_catalog(&body).unwrap();
+        for (id, support) in [
+            ("vision-name", None),
+            ("absent-input", None),
+            ("text", Some(false)),
+            ("empty", Some(false)),
+            ("image", Some(true)),
+        ] {
+            let model = catalog[0]
+                .models
+                .iter()
+                .find(|model| model.model_id == id)
+                .unwrap();
+            assert_eq!(model.modalities.image_input, support, "{id}");
+        }
     }
 
     #[test]

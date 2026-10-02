@@ -37,7 +37,8 @@ pub enum ToolSupport {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModalitySupport {
     pub text_input: bool,
-    pub image_input: bool,
+    /// `None` means input modalities were not reported; never infer no vision.
+    pub image_input: Option<bool>,
     pub text_output: bool,
 }
 
@@ -147,6 +148,7 @@ impl DiscoveryOptions {
 /// deterministic cache expiry tests.
 pub struct Discovery {
     cache: TtlCache<DiscoveryCacheKey, Vec<DiscoveredModel>>,
+    vision: TtlCache<VisionCacheKey, bool>,
 }
 
 impl std::fmt::Debug for Discovery {
@@ -157,11 +159,24 @@ impl std::fmt::Debug for Discovery {
     }
 }
 
+type VisionCacheKey = (String, String, String, String, String);
+
+fn vision_cache_key(spec: &ProviderSpec, model_id: &str) -> VisionCacheKey {
+    (
+        spec.id.to_string(),
+        spec.resolve_endpoint(),
+        spec.cache_identity(),
+        spec.protocol.to_string(),
+        model_id.to_owned(),
+    )
+}
+
 impl Discovery {
     /// Create a new discovery service with the default cache TTL.
     pub fn new() -> Self {
         Self {
             cache: TtlCache::new(DEFAULT_CACHE_TTL),
+            vision: TtlCache::new(DEFAULT_CACHE_TTL),
         }
     }
 
@@ -169,6 +184,7 @@ impl Discovery {
     pub fn with_ttl(ttl: Duration) -> Self {
         Self {
             cache: TtlCache::new(ttl),
+            vision: TtlCache::new(ttl),
         }
     }
 
@@ -176,7 +192,8 @@ impl Discovery {
     /// an injectable clock for deterministic expiry tests.
     pub fn with_clock(ttl: Duration, clock: Arc<dyn crate::cache::Clock>) -> Self {
         Self {
-            cache: TtlCache::with_clock(ttl, clock),
+            cache: TtlCache::with_clock(ttl, clock.clone()),
+            vision: TtlCache::with_clock(ttl, clock),
         }
     }
 
@@ -267,6 +284,14 @@ impl Discovery {
             }
         }
 
+        // Keep capabilities before workflow filtering, without completion-time HTTP.
+        for model in &models {
+            if let Some(support) = model.modalities.image_input {
+                self.vision
+                    .insert(vision_cache_key(spec, &model.model_id), support);
+            }
+        }
+
         // 4. Filter for tool workflows.
         if options.filter_for_tools {
             models.retain(|m| !m.deprecated && m.tool_support != ToolSupport::No);
@@ -289,9 +314,18 @@ impl Discovery {
         Ok(models)
     }
 
+    pub(crate) fn cached_vision_support(
+        &self,
+        spec: &ProviderSpec,
+        model_id: &str,
+    ) -> Option<bool> {
+        self.vision.get(&vision_cache_key(spec, model_id))
+    }
+
     /// Clear the cache.
     pub fn clear_cache(&self) {
         self.cache.clear();
+        self.vision.clear();
     }
 }
 
@@ -626,7 +660,7 @@ mod tests {
                 attachment: true,
                 modalities: ModalitySupport {
                     text_input: true,
-                    image_input: true,
+                    image_input: Some(true),
                     text_output: true,
                 },
                 context_window: 128000,
@@ -640,7 +674,7 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert!(result[0].from_endpoint);
         assert_eq!(result[0].tool_support, ToolSupport::Yes);
-        assert!(result[0].modalities.image_input);
+        assert_eq!(result[0].modalities.image_input, Some(true));
         assert_eq!(result[0].context_window, 128000);
     }
 

@@ -40,6 +40,8 @@ impl std::fmt::Debug for ChatOptions {
 
 /// An already-transformed OpenAI conversation. This boundary deliberately does
 /// not normalize IDs, repair arguments, or reconcile application history.
+/// Image URL parts are validated before HTTP using the canonical PNG/JPEG byte,
+/// pixel, frame, and remote URL limits. This applies to every message role.
 #[derive(Debug, Clone, Default)]
 pub struct ChatRequest {
     pub messages: Vec<Value>,

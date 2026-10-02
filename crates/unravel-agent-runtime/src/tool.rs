@@ -1,8 +1,9 @@
-use crate::{Error, Result};
+use crate::{Content, Error, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{collections::BTreeMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
+use tokio::time::Instant;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolCall {
@@ -19,10 +20,36 @@ pub struct ToolDefinition {
     pub parameters: Value,
 }
 
+/// Untrusted sensor content delivered only to the next model turn.
+///
+/// Observations never enter session history or event metadata and cannot be
+/// replayed after resume. Retries reuse identical content until monotonic
+/// expiry; a zero or unrepresentable lifetime is already stale.
+#[derive(Debug, Clone)]
+pub struct ToolObservation {
+    pub content: Content,
+    pub(crate) expires_at: Instant,
+}
+
+impl ToolObservation {
+    pub fn new(content: Content, valid_for: Duration) -> Self {
+        let now = Instant::now();
+        Self {
+            content,
+            expires_at: now.checked_add(valid_for).unwrap_or(now),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ToolOutput {
+    /// Persisted tool-role text. Keep sensor bytes and private annotations in
+    /// `observation`, not here.
     pub content: String,
+    /// Safe event metadata. Never include raw observations or image bytes.
     pub metadata: Value,
+    /// Ephemeral model input, separate from persisted text and metadata.
+    pub observation: Option<ToolObservation>,
 }
 
 impl ToolOutput {
@@ -30,6 +57,7 @@ impl ToolOutput {
         Self {
             content: content.into(),
             metadata: Value::Null,
+            observation: None,
         }
     }
 
@@ -37,7 +65,13 @@ impl ToolOutput {
         Self {
             content: content.into(),
             metadata,
+            observation: None,
         }
+    }
+
+    pub fn with_observation(mut self, observation: ToolObservation) -> Self {
+        self.observation = Some(observation);
+        self
     }
 }
 

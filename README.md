@@ -22,6 +22,59 @@ macOS (x64 and arm64), and Windows (x64). It does not require Cargo on the
 machine where you install it. See the [Node package guide](packages/unravel-agent-runtime/README.md)
 for an agent and tool example.
 
+## Unreleased 0.2.0 Rust changes
+
+These changes require a Git revision containing them; pushing this repository
+does not publish new crates, npm binaries, or a release tag.
+
+Rust tools can return `ToolOutput::with_observation(ToolObservation::new(content,
+valid_for))` to provide untrusted sensor input for exactly the next model turn.
+Ordinary tool text stays in history; the observation is separate canonical user
+content after all tool results. Raw observations never enter saved messages or
+events. The default encoded observation budget is 8 MiB per batch, independent
+of the ordinary text budget. Retries reuse the same frame and check its earliest
+monotonic expiry before every attempt; they never recapture automatically.
+
+Adjacent `AgentLoop::turn` calls retain observations in private in-memory session
+scratch until the next turn consumes them. Serialization, deserialization,
+cloning, reconciliation, fresh `run` calls, errors and interrupted turns discard
+that scratch. This preserves the serialized session schema but changes Rust
+struct construction: use `Session::new` and the `ToolOutput` constructors instead
+of struct literals. Fully specified `LoopConfig` literals must include
+`max_observation_bytes`; `..LoopConfig::default()` remains supported.
+Strict sequential dispatch remains the default; opt-in parallel tool groups
+retain ordered results and the same aggregate budgets.
+
+The provider exposes `validate_image_messages` and
+`with_vision_support(Option<bool>)`. Image input capability uses the exact
+Models.dev provider/model `modalities.input`: missing metadata is unknown, not
+false, and names/attachment flags are not evidence. Known denial blocks image
+HTTP requests, including when an optimistic explicit declaration conflicts with
+discovered denial. Both canonical and raw Chat Completions image paths validate
+PNG/JPEG framing, dimensions, pixels and bounded payloads before HTTP. Limits:
+eight images, 4 MiB compressed bytes per image, 16 MiB total, 4096 pixels per axis,
+8 megapixels per image and 16 megapixels total. JPEG entropy decoding is strict.
+Remote image URLs are screened, not fetched: DNS resolution, redirects, remote
+bytes and dimensions remain unverified.
+
+Building the providers from source requires **CMake and a C compiler** for
+bundled static libjpeg-turbo. NASM and system libjpeg are not required.
+The Node callback wire format remains text/metadata-only; the observation API
+above is a Rust API, not implicit JavaScript image forwarding.
+
+Local Linux verification exercised the workspace suite, warnings-denied Clippy,
+Rust 1.88 all-target checking, rustdoc/doctests, the executable sensor/tool
+roundtrip, and a real localhost HTTP SDK run with PNG delivery, saved-frame
+omission and fresh capture after restore. No hardware or live model was used.
+
+```sh
+cargo test --workspace --all-targets --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo +1.88.0 check --workspace --all-targets --locked
+cargo run --locked -p unravel-agent-runtime --example tool_roundtrip
+```
+
+
 ## Release
 
 The [release workflow](.github/workflows/release.yml) publishes the Node

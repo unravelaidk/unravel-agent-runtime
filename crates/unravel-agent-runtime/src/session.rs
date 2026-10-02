@@ -1,7 +1,7 @@
 //! Conversation sessions with multimodal content and interrupted-history
 //! reconciliation.
 
-use crate::{Error, Result, ToolCall};
+use crate::{Error, Result, ToolCall, ToolObservation};
 use serde::{Deserialize, Serialize};
 
 /// A typed content part for a multimodal message.
@@ -204,11 +204,36 @@ impl Message {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Persisted conversation plus one-use, in-memory observation scratch.
+///
+/// Adjacent [`crate::AgentLoop::turn`] calls consume pending observations once.
+/// Serialization, cloning, reconciliation and fresh runs never carry them over.
+#[derive(Serialize, Deserialize)]
 pub struct Session {
     pub id: String,
     #[serde(default)]
     pub messages: Vec<Message>,
+    #[serde(skip)]
+    pub(crate) pending_observations: Vec<(usize, ToolObservation)>,
+}
+
+impl std::fmt::Debug for Session {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Session")
+            .field("id", &self.id)
+            .field("messages", &self.messages)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Clone for Session {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            messages: self.messages.clone(),
+            pending_observations: Vec::new(),
+        }
+    }
 }
 
 impl Session {
@@ -216,6 +241,7 @@ impl Session {
         Self {
             id: id.into(),
             messages: Vec::new(),
+            pending_observations: Vec::new(),
         }
     }
 
@@ -233,8 +259,11 @@ impl Session {
     /// resuming; resuming blindly would risk replaying an operation whose
     /// effect is unknown.
     ///
+    /// Calling this establishes a resume boundary and discards observations.
+    ///
     /// Returns the number of *newly* marked unknowns (not pre-existing ones).
     pub fn reconcile_tool_history(&mut self) -> Result<usize> {
+        self.pending_observations.clear();
         // Collect (assistant-message-index, call_id, name) for every tool
         // call that does not yet have a Tool result or ToolUnknown marker.
         let mut unknown_count = 0usize;

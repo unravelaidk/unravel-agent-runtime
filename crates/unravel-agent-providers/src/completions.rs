@@ -8,6 +8,7 @@ use crate::chat::{
     ChatEventSink, ChatOptions, ChatRequest, ChatResponse, ChatStreamEvent, ChatToolCall,
 };
 use crate::error::{redact_url, ProviderError, ProviderResult};
+use crate::images::{chat_has_images, redact_chat_images, validate_chat_images};
 use crate::messages::{to_openai_messages, to_openai_tools};
 use crate::spec::ProviderSpec;
 use crate::transport::{
@@ -29,6 +30,7 @@ pub struct OpenAiCompatProvider {
     client: reqwest::Client,
     discovery: Option<Arc<Discovery>>,
     options: ChatOptions,
+    vision_support: Option<bool>,
 }
 
 impl std::fmt::Debug for OpenAiCompatProvider {
@@ -53,6 +55,7 @@ impl OpenAiCompatProvider {
             client: build_client()?,
             discovery: None,
             options: ChatOptions::default(),
+            vision_support: None,
         })
     }
 
@@ -65,6 +68,14 @@ impl OpenAiCompatProvider {
 
     pub fn with_discovery(mut self, discovery: Arc<Discovery>) -> Self {
         self.discovery = Some(discovery);
+        self
+    }
+
+    /// Supply explicit model vision metadata. `None` is unknown, not support.
+    /// A known denial (explicit or already cached discovery) blocks image
+    /// requests before HTTP; no discovery request is made during completion.
+    pub fn with_vision_support(mut self, support: Option<bool>) -> Self {
+        self.vision_support = support;
         self
     }
 
@@ -107,7 +118,28 @@ impl OpenAiCompatProvider {
     }
 
     /// Both public boundaries use this same authenticated, bounded request path.
-    async fn send(&self, request: &ChatRequest, stream: bool) -> ProviderResult<reqwest::Response> {
+    async fn send(
+        &self,
+        request: &ChatRequest,
+        stream: bool,
+        canonical: bool,
+    ) -> ProviderResult<reqwest::Response> {
+        if chat_has_images(&request.messages)
+            && (self.vision_support == Some(false)
+                || self.discovery.as_ref().and_then(|discovery| {
+                    discovery.cached_vision_support(&self.spec, &self.model_id)
+                }) == Some(false))
+        {
+            return Err(ProviderError::invalid(
+                "selected model explicitly does not support image input",
+            ));
+        }
+        // The canonical serializer already validates before creating data URLs.
+        // Raw histories must use the same validation without canonicalizing IDs,
+        // arguments, reasoning, or other application-owned history.
+        if !canonical {
+            validate_chat_images(&request.messages)?;
+        }
         let payload = self.build_payload(request, stream);
         let url = join_url(&self.spec.resolve_endpoint(), "chat/completions");
         let mut builder = self
@@ -133,7 +165,7 @@ impl OpenAiCompatProvider {
         } else {
             None
         };
-        let mut body = read_bounded_text(response).await;
+        let mut body = redact_chat_images(read_bounded_text(response).await, &request.messages);
         // Custom authentication headers can be echoed without an identifying
         // prefix. Treat every configured value as potentially sensitive.
         for value in self.options.headers.values() {
@@ -174,7 +206,7 @@ impl OpenAiCompatProvider {
         request: ChatRequest,
         canonical: bool,
     ) -> ProviderResult<ChatResponse> {
-        let response = self.send(&request, false).await?;
+        let response = self.send(&request, false, canonical).await?;
         parse_chat_completion(&read_bounded_json(response).await?, canonical)
     }
 
@@ -196,7 +228,7 @@ impl OpenAiCompatProvider {
         canonical: bool,
     ) -> ProviderResult<ChatResponse> {
         use futures_util::StreamExt;
-        let response = self.send(&request, true).await?;
+        let response = self.send(&request, true, canonical).await?;
         sink.on_event(ChatStreamEvent::Start);
         let mut buffer = Vec::new();
         let mut total_bytes = 0usize;

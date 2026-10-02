@@ -44,11 +44,13 @@ struct RunOptions {
     prefer_streaming: Option<bool>,
 }
 
+type PendingTools = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<ToolOutput, Error>>>>>;
+
 struct JsTool {
     definition: ToolDefinition,
     parallel_safe: bool,
     output: mpsc::UnboundedSender<Value>,
-    pending: Arc<Mutex<HashMap<u64, oneshot::Sender<Result<ToolOutput, Error>>>>>,
+    pending: PendingTools,
     next_id: Arc<std::sync::atomic::AtomicU64>,
 }
 
