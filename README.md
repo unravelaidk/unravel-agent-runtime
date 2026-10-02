@@ -14,7 +14,7 @@ cargo add unravel-agent-runtime@0.2.0 unravel-agent-providers@0.2.0
 For Node.js 20 or later, install the TypeScript-compatible package:
 
 ```sh
-npm install @unravelai/unravel-agent-runtime@0.2.0
+npm install @unravelai/unravel-agent-runtime
 ```
 
 The npm package includes compiled Rust executables for Linux (x64 and arm64),

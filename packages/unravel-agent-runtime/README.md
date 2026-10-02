@@ -12,7 +12,7 @@ You can supply `apiKey` directly or set the provider's API key environment
 variable, such as `OPENAI_API_KEY`.
 
 ```sh
-npm install @unravelai/unravel-agent-runtime@0.2.0
+npm install @unravelai/unravel-agent-runtime
 ```
 
 ```ts
